@@ -2,7 +2,20 @@
 
 A powerful and user-friendly AutoHotkey v2.0 application for creating multiple folders and complex directory structures in batch mode.
 
-![alt text](assets/demo.png)
+<table>
+  <tr>
+    <td align="center">
+      <img src="assets/demo.png" alt="Light Theme Demo" style="max-width: 100%;">
+      <br>
+      <em>Light Theme</em>
+    </td>
+    <td align="center">
+      <img src="assets/demo_dark.png" alt="Dark Theme Demo" style="max-width: 100%;">
+      <br>
+      <em>Dark Theme</em>
+    </td>
+  </tr>
+</table>
 
 ## Features
 

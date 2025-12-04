@@ -4,7 +4,9 @@
 ; Batch Folder Creation Tool
 class FolderCreator {
     static AppName := "mkdir"
-    static Version := "1.0.0"
+    static Version := "1.0.1"
+    static Themes := Map("Light", Map(), "Dark", Map())
+    static CurrentTheme := "Light"
 
     __New() {
         ; Initialize instance properties
@@ -14,8 +16,154 @@ class FolderCreator {
         this.CreateParents := ""
         this.IgnoreDuplicates := ""
         this.StatusBar := ""
+        this.GitHubLink := ""
+        this.ThemeTimer := ""
+
+        ; Initialize theme colors
+        this.InitThemes()
+
+        ; Set initial theme based on system
+        this.UpdateThemeFromSystem()
 
         TraySetIcon("shell32.dll", 4) ; Use Windows Folder icon
+    }
+
+    ; Initialize theme colors
+    InitThemes() {
+        ; Light theme colors
+        FolderCreator.Themes["Light"] := Map(
+            "BG", 0xFFFFFF,           ; Background
+            "EditBG", 0xFFFFFF,       ; Edit background
+            "Text", 0x00000000,         ; Text color
+            "EditText", 0x00000000,     ; Edit text
+            "Link", 0x0000FF,         ; Link color
+        )
+
+        ; Dark theme colors
+        FolderCreator.Themes["Dark"] := Map(
+            "BG", 0x414559,           ; Background
+            "EditBG", 0x414559,       ; Edit background
+            "Text", 0xFFFFFFFF,         ; Text color
+            "EditText", 0xFFFFFFFF,     ; Edit text
+            "Link", 0xCA9EE6,         ; Link color
+        )
+    }
+
+    ; Check system theme and update
+    UpdateThemeFromSystem() {
+        isLightTheme := this.DetectSystemTheme()
+        FolderCreator.CurrentTheme := isLightTheme ? "Light" : "Dark"
+        return FolderCreator.CurrentTheme
+    }
+
+    ; Detect current system theme
+    DetectSystemTheme() {
+        static REG_PATH := "HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize"
+
+        try {
+            ; Try to read apps theme setting (most reliable for Windows 10/11)
+            appsTheme := RegRead(REG_PATH, "AppsUseLightTheme")
+            return (appsTheme = 1)
+        } catch {
+            ; Fallback: check if high contrast mode is active
+            try {
+                highContrast := RegRead("HKEY_CURRENT_USER\Control Panel\Accessibility\HighContrast", "Flags")
+                if (highContrast = "1") {
+                    ; In high contrast mode, use light theme as default
+                    return true
+                }
+            }
+
+            ; Default to light theme
+            return true
+        }
+    }
+
+    ; Apply theme to GUI
+    ApplyTheme(themeName) {
+        if !FolderCreator.Themes.Has(themeName)
+            themeName := "Light"
+
+        FolderCreator.CurrentTheme := themeName
+        colors := FolderCreator.Themes[themeName]
+
+        ; Apply theme to main GUI if it exists
+        if this.MainGUI {
+            try {
+                this.MainGUI.BackColor := colors["BG"]
+                this.MainGUI.SetFont("c" Format("{:06X}", colors["Text"]), , "Segoe UI")
+
+                ; Apply to all controls
+                for hwnd, control in this.MainGUI {
+                    this.ApplyThemeToControl(control, colors)
+                }
+
+                ; Special handling for GitHub link
+                if this.GitHubLink {
+                    this.GitHubLink.SetFont("c" Format("{:06X}", colors["Link"]) " Underline")
+                }
+            } catch as e {
+                ; Silent fail on theme application errors
+            }
+        }
+    }
+
+    ; Apply theme to individual control
+    ApplyThemeToControl(control, colors) {
+        try {
+            controlType := Type(control)
+
+            if InStr(controlType, "Edit") {
+                ; control.Opt("Background" Format("{:06X}", colors["EditBG"]))
+                control.SetFont("c" Format("{:06X}", colors["EditText"]))
+            }
+            else if InStr(controlType, "Text") {
+                control.SetFont("c" Format("{:06X}", colors["Text"]))
+            }
+            else if InStr(controlType, "CheckBox") {
+                control.SetFont("c" Format("{:06X}", colors["Text"]))
+            }
+            else if InStr(controlType, "GroupBox") {
+                control.SetFont("c" Format("{:06X}", colors["Text"]))
+            }
+            else if InStr(controlType, "Progress") {
+                try {
+                    control.Opt("Background" Format("{:06X}", colors["EditBG"]))
+                }
+            }
+            else if InStr(controlType, "StatusBar") {
+                control.SetFont("c" Format("{:06X}", colors["Text"]))
+            }
+        }
+        catch Error as e {
+            ; Optional: log the error for debugging
+            ; FileAppend("Theme error: " e.Message "`n", "theme_errors.log")
+        }
+    }
+
+    ; Start theme monitoring
+    StartThemeMonitoring() {
+        ; Check for theme changes every 2 seconds
+        this.ThemeTimer := SetTimer(() => this.CheckThemeChange(), 2000)
+    }
+
+    ; Stop theme monitoring
+    StopThemeMonitoring() {
+        if this.ThemeTimer {
+            SetTimer(this.ThemeTimer, 0)
+            this.ThemeTimer := ""
+        }
+    }
+
+    ; Check if theme has changed
+    CheckThemeChange() {
+        static lastTheme := FolderCreator.CurrentTheme
+
+        currentSystemTheme := this.UpdateThemeFromSystem()
+        if (currentSystemTheme != lastTheme) {
+            lastTheme := currentSystemTheme
+            this.ApplyTheme(currentSystemTheme)
+        }
     }
 
     ; Display main interface
@@ -24,13 +172,25 @@ class FolderCreator {
         this.MainGUI.OnEvent("Close", (*) => ExitApp())
         this.MainGUI.SetFont("s10", "Segoe UI")
 
+        ; Apply current theme before creating controls
+        this.ApplyTheme(FolderCreator.CurrentTheme)
+
         ; Create controls
         this.CreateControls()
 
         ; Set up hotkeys
         this.SetupHotkeys()
 
+        ; Start monitoring theme changes
+        this.StartThemeMonitoring()
+
         this.MainGUI.Show("w700 h500")
+    }
+
+    ; Handle GUI close
+    OnClose() {
+        this.StopThemeMonitoring()
+        ExitApp()
     }
 
     ; Set up hotkeys
@@ -53,26 +213,37 @@ class FolderCreator {
 
     ; Create interface controls
     CreateControls() {
+        colors := FolderCreator.Themes[FolderCreator.CurrentTheme]
+
         ; Title and description
-        this.MainGUI.Add("Text", "xm y10 w680 Center", "Batch Folder Creator - Supports Multi-level Directory Structure")
+        this.MainGUI.Add("Text", Format("xm y10 w680 Center c{}", colors["Text"]), "Batch Folder Creator - Supports Multi-level Directory Structure")
         this.MainGUI.Add("Text", "xm y+5 w680 Center cGray", "Enter one folder path per line, supports multi-level directories and absolute paths")
 
         ; Path input area
-        this.MainGUI.Add("GroupBox", "xm y+10 w680 h300", "Folder Path List")
+        this.MainGUI.Add("GroupBox", Format("xm y+10 w680 h300 c{}", colors["Text"]), "Folder Path List")
         this.PathEdit := this.MainGUI.Add("Edit", "xp+10 yp+25 w660 h250 Multi VScroll", "")
-
+        this.PathEdit.Opt("Background" Format("{:06X}", colors["EditBG"]))
+        this.PathEdit.SetFont("s16", "Lucida Console")
+        this.PathEdit.SetFont("c" Format("{:06X}", colors["EditText"]))
         ; Button area
         btnY := 340
-        this.MainGUI.Add("Button", "xm y" btnY " w120 h35", "Start Creation").OnEvent("Click", (*) => this.StartCreation())
-        this.MainGUI.Add("Button", "x+10 yp w120 h35", "Clear List").OnEvent("Click", (*) => this.ClearList())
+        createBtn := this.MainGUI.Add("Button", "xm y" btnY " w120 h35", "Start Creation")
+        createBtn.OnEvent("Click", (*) => this.StartCreation())
+
+        clearBtn := this.MainGUI.Add("Button", "x+10 yp w120 h35", "Clear List")
+        clearBtn.OnEvent("Click", (*) => this.ClearList())
 
         ; Base path selection
-        this.MainGUI.Add("Text", "x+20 y" btnY + 5 " w80", "Base Path:")
+        this.MainGUI.Add("Text", "x+20 y" . (btnY + 5) . " w80 c" . colors["Text"], "Base Path:")
 
         ; Set default base path from command line argument or current directory
         defaultBasePath := this.GetDefaultBasePath()
         this.BasePathEdit := this.MainGUI.Add("Edit", "x+5 yp-3 w250", defaultBasePath)
-        this.MainGUI.Add("Button", "x+5 yp w80", "Browse...").OnEvent("Click", (*) => this.SelectBasePath())
+        this.BasePathEdit.Opt("Background" Format("{:06X}", colors["EditBG"]))
+        this.BasePathEdit.SetFont("s10", "Lucida Console")
+        this.BasePathEdit.SetFont("c" Format("{:06X}", colors["EditText"]))
+        browseBtn := this.MainGUI.Add("Button", "x+5 yp w80", "Browse...")
+        browseBtn.OnEvent("Click", (*) => this.SelectBasePath())
 
         ; Options area
         optionsY := btnY + 45
@@ -85,11 +256,10 @@ class FolderCreator {
 
         ; GitHub link
         tipsY := optionsY + 65
-        githubLink := this.MainGUI.Add("Text", "xm y" tipsY " w680 cBlue Right", "H1DDENADM1N/mkdir")
-        githubLink.SetFont("cBlue Underline")
-        githubLink.OnEvent("Click", (*) => Run("https://github.com/H1DDENADM1N/mkdir"))
-        githubLink.Opt("+BackgroundTrans")
-        githubLink.Text := "H1DDENADM1N/mkdir"
+        this.GitHubLink := this.MainGUI.Add("Text", "xm y" tipsY " w680 Right", "H1DDENADM1N/mkdir")
+        this.GitHubLink.SetFont("c" Format("{:06X}", colors["Link"]) " Underline")
+        this.GitHubLink.OnEvent("Click", (*) => Run("https://github.com/H1DDENADM1N/mkdir"))
+        this.GitHubLink.Opt("+BackgroundTrans")
     }
 
     ; Get default base path from command line argument or use current directory
@@ -413,6 +583,11 @@ class FolderCreator {
     CreateProgressGUI(totalItems) {
         progressGUI := Gui("+ToolWindow +AlwaysOnTop", "Creation Progress")
         progressGUI.SetFont("s9", "Segoe UI")
+
+        ; Apply theme to progress window
+        colors := FolderCreator.Themes[FolderCreator.CurrentTheme]
+        progressGUI.BackColor := colors["BG"]
+        progressGUI.SetFont("c" Format("{:06X}", colors["Text"]))
 
         progressGUI.Add("Text", "w400 Center", "Creating folders in batch...")
         progressText := progressGUI.Add("Text", "yp+30 w400 Center", "Preparing to start...")
