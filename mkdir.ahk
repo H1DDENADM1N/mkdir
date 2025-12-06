@@ -4,7 +4,7 @@
 ; Batch Folder Creation Tool
 class FolderCreator {
     static AppName := "mkdir"
-    static Version := "1.0.1"
+    static Version := "1.0.2"
     static Themes := Map("Light", Map(), "Dark", Map())
     static CurrentTheme := "Light"
 
@@ -220,13 +220,13 @@ class FolderCreator {
         this.MainGUI.Add("Text", "xm y+5 w680 Center cGray", "Enter one folder path per line, supports multi-level directories and absolute paths")
 
         ; Path input area
-        this.MainGUI.Add("GroupBox", Format("xm y+10 w680 h300 c{}", colors["Text"]), "Folder Path List")
+        this.MainGUI.Add("GroupBox", Format("xm y+10 w680 h280 c{}", colors["Text"]), "Folder Path List")
         this.PathEdit := this.MainGUI.Add("Edit", "xp+10 yp+25 w660 h250 Multi VScroll", "")
         this.PathEdit.Opt("Background" Format("{:06X}", colors["EditBG"]))
         this.PathEdit.SetFont("s16", "Lucida Console")
         this.PathEdit.SetFont("c" Format("{:06X}", colors["EditText"]))
         ; Button area
-        btnY := 340
+        btnY := 345
         createBtn := this.MainGUI.Add("Button", "xm y" btnY " w120 h35", "Start Creation")
         createBtn.OnEvent("Click", (*) => this.StartCreation())
 
@@ -234,15 +234,15 @@ class FolderCreator {
         clearBtn.OnEvent("Click", (*) => this.ClearList())
 
         ; Base path selection
-        this.MainGUI.Add("Text", "x+20 y" . (btnY + 5) . " w80 c" . colors["Text"], "Base Path:")
+        this.MainGUI.Add("Text", "x+5 yp+5 w80 c" . colors["Text"], "Base Path:")
 
         ; Set default base path from command line argument or current directory
         defaultBasePath := this.GetDefaultBasePath()
-        this.BasePathEdit := this.MainGUI.Add("Edit", "x+5 yp-3 w250", defaultBasePath)
+        this.BasePathEdit := this.MainGUI.Add("Edit", "xp+65 yp w320", defaultBasePath)
         this.BasePathEdit.Opt("Background" Format("{:06X}", colors["EditBG"]))
         this.BasePathEdit.SetFont("s10", "Lucida Console")
         this.BasePathEdit.SetFont("c" Format("{:06X}", colors["EditText"]))
-        browseBtn := this.MainGUI.Add("Button", "x+5 yp w80", "Browse...")
+        browseBtn := this.MainGUI.Add("Button", "x+10 yp-3 w30 h30", "📂")
         browseBtn.OnEvent("Click", (*) => this.SelectBasePath())
 
         ; Options area
@@ -252,7 +252,7 @@ class FolderCreator {
         this.IgnoreDuplicates := this.MainGUI.Add("CheckBox", "x+20 yp Checked", "Ignore Existing Folders")
 
         ; Status bar
-        this.StatusBar := this.MainGUI.Add("StatusBar", , "Ready - Enter folder paths and click 'Start Creation'")
+        this.StatusBar := this.MainGUI.Add("StatusBar", , "👌 Ready - Enter folder paths and click 'Start Creation'")
 
         ; GitHub link
         tipsY := optionsY + 65
@@ -282,9 +282,9 @@ class FolderCreator {
             if !DirExist(workingDir) {
                 try {
                     DirCreate(workingDir)
-                    this.UpdateStatus("Created working directory: " workingDir)
+                    this.UpdateStatus("➕ Created working directory: " workingDir)
                 } catch as e {
-                    this.UpdateStatus("Warning: Could not create working directory, using current directory instead")
+                    this.UpdateStatus("❗ Warning: Could not create working directory, using current directory instead")
                     return A_WorkingDir
                 }
             }
@@ -356,7 +356,7 @@ class FolderCreator {
                     Line: lineNum
                 })
             } else {
-                this.UpdateStatus("Line " lineNum " invalid path: " path " - " validation.Reason)
+                this.UpdateStatus("❌ Line " lineNum " invalid path: " path " - " validation.Reason)
             }
         }
 
@@ -452,7 +452,7 @@ class FolderCreator {
         resultDetails := ""
 
         ; Display base path information
-        this.UpdateStatus("Processing " paths.Length " paths...")
+        this.UpdateStatus("➕ Processing " paths.Length " paths...")
 
         ; Iterate through creating each path
         for index, pathInfo in paths {
@@ -489,11 +489,11 @@ class FolderCreator {
         ; Determine the full path based on whether it's absolute or relative
         if pathInfo.IsAbsolute {
             fullPath := pathInfo.Normalized
-            this.UpdateStatus("Creating absolute path: " fullPath)
+            this.UpdateStatus("➕ Creating absolute path: " fullPath)
         } else {
             ; For relative paths, ensure correct base path is used
             fullPath := basePath "\" pathInfo.Normalized
-            this.UpdateStatus("Creating relative path: " pathInfo.Normalized " in " basePath)
+            this.UpdateStatus("➕ Creating relative path: " pathInfo.Normalized " in " basePath)
         }
 
         ; Normalize full path to handle .. and . etc.
@@ -627,7 +627,7 @@ class FolderCreator {
         }
 
         MsgBox(resultMsg, FolderCreator.AppName, "Iconi")
-        this.UpdateStatus("Completed: " successCount " successful, " failCount " failed")
+        this.UpdateStatus("✅ Completed: " successCount " successful, " failCount " failed")
     }
 
     ; Retry with UAC elevation
@@ -813,7 +813,7 @@ class FolderCreator {
     ; Show error message
     ShowError(message) {
         MsgBox(message, FolderCreator.AppName, "Iconx")
-        this.UpdateStatus("Error: " message)
+        this.UpdateStatus("❌ Error: " message)
     }
 }
 
