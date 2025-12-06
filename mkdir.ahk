@@ -36,6 +36,7 @@ class FolderCreator {
             "EditBG", 0xFFFFFF,       ; Edit background
             "Text", 0x00000000,         ; Text color
             "EditText", 0x00000000,     ; Edit text
+            "CheckBoxText", 0x000000,  ; Checkbox text color
             "Link", 0x0000FF,         ; Link color
         )
 
@@ -45,6 +46,7 @@ class FolderCreator {
             "EditBG", 0x414559,       ; Edit background
             "Text", 0xFFFFFFFF,         ; Text color
             "EditText", 0xFFFFFFFF,     ; Edit text
+            "CheckBoxText", 0xFFFFFFFF,  ; Checkbox text color
             "Link", 0xCA9EE6,         ; Link color
         )
     }
@@ -91,7 +93,7 @@ class FolderCreator {
         if this.MainGUI {
             try {
                 this.MainGUI.BackColor := colors["BG"]
-                this.MainGUI.SetFont("c" Format("{:06X}", colors["Text"]), , "Segoe UI")
+                this.MainGUI.SetFont("c" Format("{:06X}", colors["Text"]))
 
                 ; Apply to all controls
                 for hwnd, control in this.MainGUI {
@@ -114,22 +116,20 @@ class FolderCreator {
             controlType := Type(control)
 
             if InStr(controlType, "Edit") {
-                ; control.Opt("Background" Format("{:06X}", colors["EditBG"]))
+                control.Opt("Background" Format("{:06X}", colors["EditBG"]))
                 control.SetFont("c" Format("{:06X}", colors["EditText"]))
             }
             else if InStr(controlType, "Text") {
                 control.SetFont("c" Format("{:06X}", colors["Text"]))
             }
             else if InStr(controlType, "CheckBox") {
-                control.SetFont("c" Format("{:06X}", colors["Text"]))
+                control.SetFont("c" Format("{:06X}", colors["CheckBoxText"]))
             }
             else if InStr(controlType, "GroupBox") {
                 control.SetFont("c" Format("{:06X}", colors["Text"]))
             }
             else if InStr(controlType, "Progress") {
-                try {
-                    control.Opt("Background" Format("{:06X}", colors["EditBG"]))
-                }
+                control.Opt("Background" Format("{:06X}", colors["EditBG"]))
             }
             else if InStr(controlType, "StatusBar") {
                 control.SetFont("c" Format("{:06X}", colors["Text"]))
